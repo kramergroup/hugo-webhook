@@ -50,5 +50,60 @@ docker run --rm -it -p 9000:9000 \
            -e GIT_REPO_CONTENT_PATH=<A_SUBPATH_IN_REPO> kramergroup/hugo
 ```
 
+This will run the container locally. A refresh can be triggered with 
+
+```bash
+curl http://localhost:9000/hooks/refresh
+```
+
+
 ## Kubernetes
 
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hugo-site
+spec:
+  selector:
+    matchLabels:
+      app: hugo-site
+  template:
+    metadata:
+      labels:
+        app: hugo-site
+    spec:
+      volumes:
+      - name: git-secret
+        secret:
+          secretName: git-credentials   # = a secret holding the id_rsa file for password-less pull
+          defaultMode: 256              # = mode 0400
+      - name: html
+        emptyDir: {}
+      containers:
+      - name: webhook
+        image: kramergroup/hugo-webhook:latest
+        env:
+        - name: GIT_REPO_URL
+          value: <git clone url>
+        - name: GIT_REPO_CONTENT_PATH
+          value: docs
+        ports:
+        - containerPort: 9000
+        volumeMounts:
+        - name: html
+          mountPath: /target
+        - name: git-secret
+          mountPath: /ssh
+      - name: nginx
+        image: nginx
+        ports:
+        - containerPort: 80
+        volumeMounts:
+        - name: html
+          mountPath: /usr/share/nginx/html
+```
+
+This configures a deployment in Kubernetes called *hugo-site*. It consists of a pod with two containers: (1) holding the webhook, and (2) an nginx server serving the static content. The web-server is exposed at port 80 and the webhook at port 9000. A service object should be configured to access these.
+
+> Note that <git clone url> needs to be replaced with the git repository url.
