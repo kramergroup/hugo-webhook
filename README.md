@@ -43,8 +43,10 @@ The container is configured through environment variables and some configuration
 ## Docker
 
 ```bash
-docker run --rm -it -p 9000:9000 -v <MY_SSH_PRIVATE_KEY>:/ssh/id_rsa \
-           -e GIT_REPO_URL=<THE_GIT_REPO_URL> /
+docker run --rm -it -p 9000:9000 \
+           -v $(pwd):/target \
+           -v <MY_SSH_PRIVATE_KEY>:/ssh/id_rsa \
+           -e GIT_REPO_URL=<THE_GIT_REPO_URL> \
            -e GIT_REPO_CONTENT_PATH=<A_SUBPATH_IN_REPO> kramergroup/hugo
 ```
 
