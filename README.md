@@ -6,6 +6,14 @@ The container is meant to operate as a webhook consumer to trigger a rebuild of 
 This can be used to autmatically refresh a static website after a git commit. A refresh is always triggered when the container is
 started.
 
+The container exposed a webhook listener on port 9000. A refresh of the site can be triggered with:
+
+```bash
+curl http://localhost:9000/hooks/refresh
+```
+
+
+
 The *target directory* should be mounted by a static
 webserver (such as nginx) and served. See the Kubernetes deployment example for a fully working deployment.
 
@@ -24,11 +32,11 @@ The container is configured through environment variables and some configuration
 
 ### Volumes and configuration files
 
-| Name             | Description                                                                                          |
-| ---------------- | ---------------------------------------------------------------------------------------------------- |
-| `/target`        | The location of the rendered HTML site                                                               |
-| `/etc/hooks.json | The [webhook](https://github.com/adnanh/webhook) configuration file                                  |
-| `/ssh/id_rsa`    | The private key used to communicate with the git repository (needs to have at least 400 permissions) |
+| Name              | Description                                                                                          |
+| ----------------- | ---------------------------------------------------------------------------------------------------- |
+| `/target`         | The location of the rendered HTML site                                                               |
+| `/etc/hooks.json` | The [webhook](https://github.com/adnanh/webhook) configuration file                                  |
+| `/ssh/id_rsa`     | The private key used to communicate with the git repository (needs to have at least 400 permissions) |
 
 # Deployment examples
 
