@@ -106,4 +106,4 @@ spec:
 
 This configures a deployment in Kubernetes called *hugo-site*. It consists of a pod with two containers: (1) holding the webhook, and (2) an nginx server serving the static content. The web-server is exposed at port 80 and the webhook at port 9000. A service object should be configured to access these.
 
-> Note that <git clone url> needs to be replaced with the git repository url.
+> Note that "git clone url" needs to be replaced with the git repository url.
