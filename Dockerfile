@@ -7,7 +7,7 @@ RUN echo "deb http://ftp.us.debian.org/debian testing main contrib non-free" > /
 	&& rm -rf /var/lib/apt/lists/*
 
 # Configuration variables
-ENV HUGO_VERSION 0.55.3
+ENV HUGO_VERSION 0.72.0
 ENV HUGO_BINARY hugo_extended_${HUGO_VERSION}_Linux-64bit.deb
 
 ENV GIT_REPO_CONTENT_PATH ''
