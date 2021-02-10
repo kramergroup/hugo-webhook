@@ -2,8 +2,22 @@
 
 This container provides a webhook that triggers a Hugo rebuild of a given git repository.
 
-The container is meant to operate as a webhook consumer to trigger a rebuild of a [Hugo](https://http://gohugo.io) static website.
-This can be used to autmatically refresh a static website after a git commit. A refresh is always triggered when the container is
+
+Based on [kramergroup/hugo-webhook](https://github.com/kramergroup/hugo-webhook), this webhook
+image lets you authenticate to github, gitea or gitlab using a web token. It was built as a 
+base for jfardello/hugo-webhook-chart.
+Some features:
+
+* Web tokens: it is a lot easier to pass tokens as arguments to the chart than passing certificates.
+* It doesn't make use of supervisord
+* Smaller: it now uses the alpine docker image, webhook and hugo binaries have been compressed 
+  with UPX and thus the image is pretty small. 
+* It doesn't run as root.
+* Can cache sources for faster pulling.
+
+The container is meant to operate as a webhook consumer to trigger a rebuild of a 
+[Hugo](https://http://gohugo.io) static website. This can be used to autmatically refresh a 
+static website after a git commit. A refresh is always triggered when the container is
 started.
 
 The container exposed a webhook listener on port 9000. A refresh of the site can be triggered with:
@@ -14,41 +28,52 @@ curl http://localhost:9000/hooks/refresh
 
 
 
-The *target directory* should be mounted by a static
-webserver (such as nginx) and served. See the Kubernetes deployment example for a fully working deployment.
+The *hugo target directory* should be mounted by a static webserver (such as nginx) and served.
+See the Kubernetes deployment example for a fully working deployment.
 
 ## Configuration
 
-The container is configured through environment variables and some configuration files. The Hugo version is 0.55.3.
+The container is configured through environment variables and some configuration files. The Hugo 
+version is 0.80.0.
 
 ### Environment variables
 
 | Name                    | Description                                                                                        |
 | ----------------------- | -------------------------------------------------------------------------------------------------- |
-| `GIT_REPO_URL`          | The URL of the git repository                                                                      |
-| `GIT_REPO_CONTENT_PATH` | The subpath of the repository holding the hugo source files (e.g., where `config.toml` is located) |
-| `GIT_REPO_BRANCH`       | The branch of the git repository                                                                   |
-| `HUGO_PARAMS`           | Additional HUGO parameter (e.g., `--minify`)                                                       |
+| `GIT_PROVIDER`          | Your git provider (GITHUB|GITEA|GITLAB), defaults to GITHUB, only used if TRANSPORT is HTTP.       |
+| `GIT_TRANSPORT`         | Whether to use SSH or HTTP git transport, defaults to HTTP.                                        |
+| `GIT_TOKEN`             | A gitlab, geta, or github token for authorizing th git pull over http.                             |
+| `GIT_USERNAME`          | When using webtockens and GITEA, the tokens' owner username.                                       |
+| `GIT_HTTP_INSECURE`     | Force clear http as trasnport. (A nasty thing, you know what you're doing).                                       |
+| `GIT_REPO_URL`          | The URL of the git repository.                                                                     |
+| `GIT_REPO_CONTENT_PATH` | The subpath of the repository holding the hugo source files (e.g., where `config.toml` is located).|
+| `GIT_REPO_BRANCH`       | The branch of the git repository.                                                                  |
+| `GIT_CLONE_DEST`        | Where to clone the repo to, defaults to /srv/src                                                   |
+| `GIT_PRESERVE_SRC`      | Whether to preserve(cache) the src upon build or not. "TRUE" or "FALSE", default to FALSE          |
+| `HUGO_TARGET_DIR`       | Where to save hugo's built html, defaults to /srv/static                                           |
+| `HUGO_PARAMS`           | Additional HUGO parameter (e.g., `--minify`).                                                      |
 
 ### Volumes and configuration files
 
-| Name              | Description                                                                                          |
-| ----------------- | ---------------------------------------------------------------------------------------------------- |
-| `/target`         | The location of the rendered HTML site                                                               |
-| `/etc/hooks.json` | The [webhook](https://github.com/adnanh/webhook) configuration file                                  |
-| `/ssh/id_rsa`     | The private key used to communicate with the git repository (needs to have at least 400 permissions) |
+| Name              | Description                                                                                                   |
+| ----------------- | --------------------------------------------------------------------------------------------------------------|
+| `/srv/static`     | The default location of the rendered HTML site.                                                               |
+| `/etc/hooks.json` | The [webhook](https://github.com/adnanh/webhook) configuration file.                                          |
+| `/ssh/id_rsa`     | The private key used to communicate with the git repository over SSH (needs to have at least 400 permissions).|
 
 # Deployment examples
 
 ## Docker
 
 ```bash
-docker run --rm -it -p 9000:9000 \
-           -v $(pwd):/target \
-           -v <MY_SSH_PRIVATE_KEY>:/ssh/id_rsa \
-           -e GIT_REPO_URL=<THE_GIT_REPO_URL> \
-           -e GIT_REPO_CONTENT_PATH=<A_SUBPATH_IN_REPO> kramergroup/hugo
+
+docker  run --rm -it \
+            -e GIT_TOKEN=<a github,gitea or gitlab token> \
+            -e GIT_REPO_URL=<githubrepo url>  \
+            -p9000:9000 -v ./html:/srv:Z quay.io/jfardello/hugo-webhook
 ```
+*NOTE*: 
+  git repository url *should not* have the schema, ex: github.com/user/repo.git
 
 This will run the container locally. A refresh can be triggered with 
 
@@ -59,51 +84,12 @@ curl http://localhost:9000/hooks/refresh
 
 ## Kubernetes
 
-```yaml
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: hugo-site
-spec:
-  selector:
-    matchLabels:
-      app: hugo-site
-  template:
-    metadata:
-      labels:
-        app: hugo-site
-    spec:
-      volumes:
-      - name: git-secret
-        secret:
-          secretName: git-credentials   # = a secret holding the id_rsa file for password-less pull
-          defaultMode: 256              # = mode 0400
-      - name: html
-        emptyDir: {}
-      containers:
-      - name: webhook
-        image: kramergroup/hugo-webhook:latest
-        env:
-        - name: GIT_REPO_URL
-          value: <git clone url>
-        - name: GIT_REPO_CONTENT_PATH
-          value: docs
-        ports:
-        - containerPort: 9000
-        volumeMounts:
-        - name: html
-          mountPath: /target
-        - name: git-secret
-          mountPath: /ssh
-      - name: nginx
-        image: nginx
-        ports:
-        - containerPort: 80
-        volumeMounts:
-        - name: html
-          mountPath: /usr/share/nginx/html
+Use this helm chart:
+
+```
+$ helm repo add jfardello https://jfardello.github.io/helm-charts/
+$ helm install jfardello/hugo-webhook --set -e GIT_TOKEN=xxxxxredactedyyyyyyyzzzzzz \
+  --set GIT_REPO_URL=github.com/username/hugo-site.git
 ```
 
-This configures a deployment in Kubernetes called *hugo-site*. It consists of a pod with two containers: (1) holding the webhook, and (2) an nginx server serving the static content. The web-server is exposed at port 80 and the webhook at port 9000. A service object should be configured to access these.
-
-> Note that "git clone url" needs to be replaced with the git repository url.
+See [jfardello/hugo-webhook-chart](https://github.com/jfardello/hugo-webhook-chart). 
