@@ -16,7 +16,7 @@ RUN apk add --no-cache --update -t build-deps curl go git gcc libc-dev libgcc up
 
 FROM alpine:3.13
 
-ENV DOCKER_HUGO_VERSION="0.80.0"
+ENV DOCKER_HUGO_VERSION="0.107.0"
 ENV DOCKER_HUGO_NAME="hugo_extended_${DOCKER_HUGO_VERSION}_Linux-64bit"
 ENV DOCKER_HUGO_BASE_URL="https://github.com/gohugoio/hugo/releases/download"
 ENV DOCKER_HUGO_URL="${DOCKER_HUGO_BASE_URL}/v${DOCKER_HUGO_VERSION}/${DOCKER_HUGO_NAME}.tar.gz"
